@@ -122,4 +122,4 @@ iex(5)> MyApp.Repo.all from p in Post,
 
 ## Limitations
 
-Check the *known limitations*  section in the `RethinkDB.Ecto` documentation.
+Check the *known limitations*  section in the [RethinkDB.Ecto](lib/rethinkdb_ecto.ex) documentation.
