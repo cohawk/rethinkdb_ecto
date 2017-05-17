@@ -198,16 +198,18 @@ defmodule RethinkDB.Ecto do
     name = Keyword.get(options, :database, conf[:db])
 
     {:ok, conn} = RethinkDB.Connection.start_link(conf)
+    ## Format to :ok/:error tuple response
+    ## https://github.com/hamiltop/rethinkdb-elixir/commit/29e485b269d5076735190afe5dc03731ffc126b9
     case RethinkDB.run(ReQL.db_drop(name), conn) do
-      %RethinkDB.Record{data: %{"dbs_dropped" => 1}} ->
+      {:ok, %RethinkDB.Record{data: %{"dbs_dropped" => 1}}} ->
         :ok
-      %RethinkDB.Response{data: %{"r" => [error|_]}} ->
+      {:error, %RethinkDB.Response{data: %{"r" => [error|_]}}} ->
         if String.ends_with?(error, "does not exist.") do
           {:error, :already_down}
         else
           {:error, error}
         end
-      %RethinkDB.Exception.ConnectionClosed{} ->
+      {:error, %RethinkDB.Exception.ConnectionClosed{}} ->
         {:error, :connection_closed}
     end
   end
@@ -218,16 +220,18 @@ defmodule RethinkDB.Ecto do
     name = Keyword.get(options, :database, conf[:db])
 
     {:ok, conn} = RethinkDB.Connection.start_link(conf)
+    ## Format to :ok/:error tuple response
+    ## https://github.com/hamiltop/rethinkdb-elixir/commit/29e485b269d5076735190afe5dc03731ffc126b9
     case RethinkDB.run(ReQL.db_create(name), conn) do
-      %RethinkDB.Record{data: %{"dbs_created" => 1}} ->
+      {:ok, %RethinkDB.Record{data: %{"dbs_created" => 1}}} ->
         :ok
-      %RethinkDB.Response{data: %{"r" => [error|_]}} ->
+      {:error, %RethinkDB.Response{data: %{"r" => [error|_]}}} ->
         if String.ends_with?(error, "already exists.") do
           {:error, :already_up}
         else
           {:error, error}
         end
-      %RethinkDB.Exception.ConnectionClosed{} ->
+      {:error, %RethinkDB.Exception.ConnectionClosed{}} ->
         {:error, :connection_closed}
     end
   end
@@ -317,13 +321,15 @@ defmodule RethinkDB.Ecto do
   defp execute_query(query, repo, {func, fields}, proc_or_ret) do
     process   = if is_function(proc_or_ret, 3), do: proc_or_ret
     returning = if is_list(proc_or_ret),        do: proc_or_ret
+    ## Format to :ok/:error tuple response
+    ## https://github.com/hamiltop/rethinkdb-elixir/commit/29e485b269d5076735190afe5dc03731ffc126b9
     case RethinkDB.run(query, repo.__connection__) do
-      %{data: %{"r" => [error|_]}} ->
+      {:error, %{data: %{"r" => [error|_]}}} ->
         raise error
-      %{data: data} when is_list(data) ->
+      {:ok, %{data: data}} when is_list(data) ->
         {records, count} = Enum.map_reduce(data, 0, &{process_result(&1, process, fields), &2 + 1})
         {count, records}
-      %{data: data} ->
+      {:ok, %{data: data}} ->
         case func do
           :all when not is_list(data) ->
             {1, [process_result(data, process, fields)]}
